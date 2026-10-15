@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hobby Record</title>
+<style>
+:root{--bg:#faf8f5;--card:#fff;--text:#2b2623;--sub:#8a817a;--line:#e8e2db;--accent:#c4562f;--star:#e5a50a}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1817;--card:#242120;--text:#efeae4;--sub:#9c938b;--line:#37322f;--accent:#e87a52;--star:#f0b429}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,"Hiragino Sans","Yu Gothic",sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:22px;margin:0 0 4px}
+.stats{color:var(--sub);font-size:13px;margin-bottom:16px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input,select,textarea,button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+textarea{width:100%;resize:vertical}
+button{cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.bar input[type=search]{flex:1;min-width:160px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tab{border-radius:999px;padding:4px 14px;font-size:13px}
+.tab.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.list{display:grid;gap:10px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:4px}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.title{font-weight:700;font-size:16px}
+.meta{color:var(--sub);font-size:13px}
+.stars{color:var(--star);letter-spacing:2px}
+.memo{white-space:pre-wrap;font-size:14px}
+.chip{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 8px;margin-right:6px;color:var(--sub)}
+.acts{display:flex;gap:6px}
+.acts button{padding:2px 8px;font-size:12px;color:var(--sub)}
+.empty{text-align:center;color:var(--sub);padding:40px 0}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);width:min(480px,calc(100% - 32px));padding:20px}
+dialog::backdrop{background:#0008}
+form{display:grid;gap:10px}
+label{display:grid;gap:2px;font-size:13px;color:var(--sub)}
+label input,label select{color:var(--text)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.foot{display:flex;justify-content:space-between;margin-top:6px}
+.item.has-cover{grid-template-columns:64px 1fr;column-gap:14px}
+.item.has-cover>.cover{grid-row:1/span 5;width:64px;height:92px;object-fit:cover;border-radius:6px;background:var(--line)}
+.desc{font-size:13px;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#sdlg{width:min(600px,calc(100% - 32px))}
+.sbar{display:flex;gap:8px;margin-bottom:12px}
+.sbar input{flex:1}
+.res{display:grid;gap:8px;max-height:55vh;overflow:auto}
+.r{display:grid;grid-template-columns:48px 1fr;gap:12px;text-align:left;padding:8px;width:100%}
+.r:hover{border-color:var(--accent)}
+.r img,.r .noimg{width:48px;height:68px;object-fit:cover;border-radius:4px;background:var(--line)}
+.r b{display:block}
+.note{color:var(--sub);font-size:12px;margin-top:8px}
+.savest.ok{color:#2a7d46}.savest.ng{color:#c0392b;font-weight:700}
+@media(prefers-color-scheme:dark){.savest.ok{color:#5fc07f}.savest.ng{color:#ff6b5b}}
+label.chk{display:flex;align-items:center;gap:6px}
+.chip.g{border-style:dashed}
+.small{margin-top:28px;display:flex;gap:8px;justify-content:center}
+.small button{font-size:12px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📚 Hobby Record</h1>
+  <div class="stats" id="stats"></div>
+  <div class="stats"><span id="savest" class="savest"></span><span id="bk"></span></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="タイトル・作者・感想で検索">
+    <select id="sort">
+      <option value="date">記録日が新しい順</option>
+      <option value="released">公開日が新しい順</option>
+      <option value="rating">評価が高い順</option>
+      <option value="title">タイトル順</option>
+    </select>
+    <select id="gf"><option value="">すべてのジャンル</option></select>
+    <button class="primary" id="add">＋ 追加</button>
+    <button id="tmdbkey2" title="TMDBキー設定">⚙ TMDBキー</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="list" id="list"></div>
+  <div class="small">
+    <button id="exp">書き出し (JSON)</button>
+    <button id="imp">読み込み</button>
+    <button id="link">📁 自動保存ファイルを選ぶ</button>
+    <button id="tmdbkey">TMDBキー設定</button>
+    <input type="file" id="file" accept=".json" hidden>
+  </div>
+  <p class="note" style="text-align:center">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+</div>
+
+<dialog id="sdlg">
+  <div class="sbar">
+    <input type="search" id="sq" placeholder="作品名で検索（例：ママがこの世界からいなくなっても）">
+    <button class="primary" id="sgo">検索</button>
+  </div>
+  <div class="res" id="res"></div>
+  <div class="note" id="snote"></div>
+  <div class="foot">
+    <button type="button" id="manual">見つからない → 手動で入力</button>
+    <button type="button" id="sclose">閉じる</button>
+  </div>
+</dialog>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <input type="hidden" name="cover"><input type="hidden" name="desc">
+    <label>タイトル<input name="title" required></label>
+    <div class="row">
+      <label>種類<select name="type"></select></label>
+      <label>作者・監督<input name="creator"></label>
+    </div>
+    <label>ジャンル（「、」区切り）<input name="genres" placeholder="例：ミステリー、ヒューマンドラマ"></label>
+    <div class="row">
+      <label>公開日・開始日<input name="released" placeholder="2024-06-15 / 2024-06 / 2024"></label>
+      <label>終了日（長く続いた作品のみ）<input name="ended" placeholder="2027-03"></label>
+    </div>
+    <label class="chk"><input type="checkbox" name="ongoing"> 現在も続いている（連載中・放送中）</label>
+    <div class="row">
+      <label>状態<select name="status"></select></label>
+      <label>評価<select name="rating"><option value="0">未評価</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+    </div>
+    <label>鑑賞・読了日<input type="date" name="date"></label>
+    <label>感想<textarea name="memo" rows="4"></textarea></label>
+    <div class="foot">
+      <button type="button" id="cancel">キャンセル</button>
+      <button class="primary" type="submit">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const TYPES=["本","漫画","映画","アニメ","ドラマ","ゲーム","その他"];
+const STATUS=["完了","進行中","予定"];
+const K2="records-v2";
+let items=[],lsSaved=0;
+(()=>{ // ブラウザ保存領域から読み込み（旧形式 records-v1 も引き継ぐ）
+  try{const p=JSON.parse(localStorage.getItem(K2));if(p&&Array.isArray(p.items)){items=p.items;lsSaved=p.savedAt||0;return}}catch(e){}
+  try{const a=JSON.parse(localStorage.getItem("records-v1")||"null");if(Array.isArray(a))items=a}catch(e){}
+})();
+const normalize=()=>items.forEach(i=>{if(!i.released&&i.year)i.released=String(i.year)}); // 旧データの移行
+function mergeIn(d){ // 既存の記録は消さずに、無いものだけ追加する
+  const list=Array.isArray(d)?d:Array.isArray(d?.items)?d.items:null;if(!list)return 0;
+  const have=new Set(items.map(x=>x.id));let n=0;
+  for(const x of list)if(x&&x.id&&x.title&&!have.has(x.id)){items.push(x);have.add(x.id);n++}
+  normalize();return n;
+}
+normalize();
+let tab="すべて",editId=null;
+const $=id=>document.getElementById(id);
+
+/* ---------- 日付・期間 ---------- */
+const pd=s=>{const m=/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?$/.exec((s||"").trim());return m?{y:+m[1],m:+(m[2]||0),d:+(m[3]||0)}:null};
+const ymd=(y,m,d)=>[y,m&&String(m).padStart(2,"0"),m&&d&&String(d).padStart(2,"0")].filter(Boolean).join("-");
+const nd=s=>{const p=pd((s||"").trim().replace(/[\/.]/g,"-"));return p?ymd(p.y,p.m,p.d):(s||"").trim()};
+const fmtD=s=>{const p=pd(s);return p?`${p.y}年${p.m?p.m+"月":""}${p.d?p.d+"日":""}`:(s||"")};
+function span(i){
+  const a=pd(i.released);if(!a)return "";
+  if(!i.ongoing&&(!i.ended||i.ended===i.released))return fmtD(i.released);
+  const n=new Date(),b=i.ongoing?{y:n.getFullYear(),m:n.getMonth()+1}:pd(i.ended);
+  let dur="";
+  if(b){
+    if(a.m&&b.m){const mo=(b.y-a.y)*12+(b.m-a.m);if(mo>0)dur=(mo>=12?Math.floor(mo/12)+"年":"")+(mo%12?mo%12+"か月":"")}
+    else if(b.y>a.y)dur="約"+(b.y-a.y)+"年";
+  }
+  return `${fmtD(i.released)}〜${i.ongoing?"継続中":fmtD(i.ended)}${dur?`（${dur}）`:""}`;
+}
+const genreList=i=>(i.genres||"").split("、").filter(Boolean);
+/* ---------- 保存（最重要）----------
+   変更のたびに即座に、①localStorage ②IndexedDB ③（任意）選んだJSONファイル の全てへ保存する。
+   どれか1つでも成功すれば記録は残る。全て失敗したときは必ず警告を出す。 */
+const idbOpen=()=>new Promise((res,rej)=>{const r=indexedDB.open("hobby-record",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const idbPut=async(k,v)=>{const db=await idbOpen();return new Promise((res,rej)=>{const t=db.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>{db.close();res()};t.onerror=t.onabort=()=>rej(t.error)})};
+const idbGet=async k=>{const db=await idbOpen();return new Promise((res,rej)=>{const r=db.transaction("kv").objectStore("kv").get(k);r.onsuccess=()=>{db.close();res(r.result)};r.onerror=()=>rej(r.error)})};
+let fh=null,st=null,ready=false;
+async function fileWrite(){
+  if(!fh)return null;
+  try{
+    if((await fh.queryPermission({mode:"readwrite"}))!=="granted")return false;
+    const w=await fh.createWritable();await w.write(JSON.stringify(items,null,2));await w.close();return true;
+  }catch(e){return false}
+}
+async function save(){
+  if(!ready)return;
+  const payload=structuredClone({savedAt:Date.now(),items});
+  const r={ls:false,idb:false,file:null,at:new Date()};
+  try{localStorage.setItem(K2,JSON.stringify(payload));r.ls=true}catch(e){}
+  try{await idbPut("items",payload);r.idb=true}catch(e){}
+  r.file=await fileWrite();
+  st=r;updateStatus();
+  if(!r.ls&&!r.idb&&r.file!==true)alert("⚠ 保存できませんでした。ブラウザの保存が無効になっている可能性があります。今すぐ「書き出し」でバックアップしてください。");
+}
+function updateStatus(){
+  if(st){
+    const ok=st.ls||st.idb||st.file===true;
+    const where=[st.ls&&"ブラウザ",st.idb&&"IndexedDB",st.file===true&&"ファイル"].filter(Boolean).join("＋");
+    $("savest").className="savest "+(ok?"ok":"ng");
+    $("savest").textContent=ok?`✔ ${st.at.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} 保存済み（${where}）`:"⚠ 保存できていません。「書き出し」でバックアップしてください";
+  }
+  let le=0;try{le=+localStorage.getItem("last-export")||0}catch(e){}
+  const days=le?Math.floor((Date.now()-le)/864e5):null;
+  $("bk").className=items.length&&(days===null||days>=14)?"savest ng":"";
+  $("bk").textContent=!items.length?"":days===null?" ・ バックアップ未作成（「書き出し」を推奨）":days>=14?` ・ 最後のバックアップは${days}日前`:" ・ バックアップ済み";
+  $("link").textContent=fh?(st&&st.file===true?"📁 自動保存ファイル：接続中":"📁 自動保存ファイル：再接続"):"📁 自動保存ファイルを選ぶ";
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const form=$("form");
+form.type.innerHTML=TYPES.map(t=>`<option>${t}</option>`).join("");
+form.status.innerHTML=STATUS.map(t=>`<option>${t}</option>`).join("");
+
+function render(){
+  const q=$("q").value.trim().toLowerCase();
+  $("tabs").innerHTML=["すべて",...TYPES].map(t=>{
+    const n=t==="すべて"?items.length:items.filter(i=>i.type===t).length;
+    return `<button class="tab ${t===tab?"on":""}" data-t="${t}">${t} ${n}</button>`}).join("");
+  const gs=[...new Set(items.flatMap(genreList))].sort((a,b)=>a.localeCompare(b,"ja"));
+  const gsel=$("gf").value;
+  $("gf").innerHTML=`<option value="">すべてのジャンル</option>`+gs.map(g=>`<option ${g===gsel?"selected":""}>${esc(g)}</option>`).join("");
+  let v=items.filter(i=>(tab==="すべて"||i.type===tab)&&(!gsel||genreList(i).includes(gsel))&&(!q||[i.title,i.creator,i.memo,i.genres].join(" ").toLowerCase().includes(q)));
+  const s=$("sort").value;
+  v.sort((a,b)=>s==="rating"?b.rating-a.rating:s==="title"?a.title.localeCompare(b.title,"ja"):s==="released"?(b.released||"").localeCompare(a.released||""):(b.date||"").localeCompare(a.date||""));
+  const done=items.filter(i=>i.status==="完了").length;
+  $("stats").textContent=`全${items.length}件 ／ 完了${done}件`;
+  $("list").innerHTML=v.length?v.map(i=>`
+    <div class="item ${i.cover?"has-cover":""}">
+      ${i.cover?`<img class="cover" src="${esc(i.cover)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}
+      <div class="top"><span class="title">${esc(i.title)}</span><span class="stars">${"★".repeat(i.rating)}${"☆".repeat(5-i.rating)}</span></div>
+      <div class="meta"><span class="chip">${esc(i.type)}</span><span class="chip">${esc(i.status)}</span>${genreList(i).map(g=>`<span class="chip g">${esc(g)}</span>`).join("")}${esc(i.creator||"")}</div>
+      ${span(i)||i.date?`<div class="meta">${span(i)?`公開：${esc(span(i))}`:""}${span(i)&&i.date?" ／ ":""}${i.date?`記録：${esc(i.date)}`:""}</div>`:""}
+      ${i.desc?`<div class="desc">${esc(i.desc)}</div>`:""}
+      ${i.memo?`<div class="memo">${esc(i.memo)}</div>`:""}
+      <div class="acts"><button data-e="${i.id}">編集</button><button data-d="${i.id}">削除</button></div>
+    </div>`).join(""):`<div class="empty">まだ記録がありません。「＋ 追加」から始めましょう。</div>`;
+}
+
+function open(id,pre){
+  editId=id;
+  let i={...(items.find(x=>x.id===id)||{type:tab==="すべて"?"本":tab,status:"完了",rating:0,date:new Date().toISOString().slice(0,10),title:"",creator:"",memo:"",cover:"",desc:"",genres:"",released:"",ended:"",ongoing:false}),...pre};
+  if(Array.isArray(i.genres))i={...i,genres:i.genres.join("、")};
+  for(const k of ["title","type","creator","genres","released","ended","status","rating","date","memo","cover","desc"])form[k].value=i[k]??"";
+  form.ongoing.checked=!!i.ongoing;
+  $("sdlg").close();
+  $("dlg").showModal();
+}
+
+/* ---------- 作品検索 ---------- */
+const strip=s=>(s||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
+const https=u=>(u||"").replace(/^http:/,"https:");
+const j=async(url,opt)=>{const r=await fetch(url,opt);if(!r.ok)throw new Error(r.status);return r.json()};
+
+const dt=s=>(s||"").slice(0,10);
+const GENRE_JA={Action:"アクション",Adventure:"冒険",Comedy:"コメディ",Drama:"ドラマ",Ecchi:"お色気",Fantasy:"ファンタジー",Horror:"ホラー","Mahou Shoujo":"魔法少女",Mecha:"ロボット",Music:"音楽",Mystery:"ミステリー",Psychological:"サイコ",Romance:"恋愛","Sci-Fi":"SF","Slice of Life":"日常",Sports:"スポーツ",Supernatural:"超常現象",Thriller:"スリラー",
+  Fiction:"小説","Juvenile Fiction":"児童書","Biography & Autobiography":"伝記・自伝","Comics & Graphic Novels":"コミック","Self-Help":"自己啓発","Business & Economics":"ビジネス",Cooking:"料理",History:"歴史",Poetry:"詩"};
+const gj=a=>[...new Set((a||[]).map(g=>GENRE_JA[g]||g))];
+const dropG=a=>(a||[]).filter(g=>!/^(ブック|Books|マンガ|マンガ／グラフィックノベル|映画|ムービー|Movies|TV番組|TV Shows|オーディオブック|Audiobooks)$/.test(g));
+const art=u=>(u||"").replace("100x100","300x300");
+
+async function srcBooks(q){
+  const d=await j(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=ja`);
+  return (d.items||[]).map(({volumeInfo:v})=>({
+    title:[v.title,v.subtitle].filter(Boolean).join(" "),creator:(v.authors||[]).join("、"),
+    type:/comic|manga|漫画|コミック/i.test((v.categories||[]).join())?"漫画":"本",
+    released:nd(v.publishedDate),genres:gj((v.categories||[]).flatMap(c=>c.split("/")).map(s=>s.trim()).filter(Boolean)),
+    cover:https(v.imageLinks?.thumbnail),desc:strip(v.description)}));
+}
+async function srcAni(q){
+  const query=`query($s:String){Page(perPage:6){media(search:$s,sort:SEARCH_MATCH){type format status genres title{native romaji}
+    startDate{year month day} endDate{year month day} coverImage{large} description(asHtml:false)
+    studios(isMain:true){nodes{name}} staff(perPage:1){nodes{name{full native}}}}}}`;
+  const d=await j("https://graphql.anilist.co",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,variables:{s:q}})});
+  return d.data.Page.media.map(m=>({
+    title:m.title.native||m.title.romaji,type:m.type==="ANIME"?"アニメ":"漫画",
+    creator:m.type==="ANIME"?(m.studios.nodes[0]?.name||""):(m.staff.nodes[0]?.name.native||m.staff.nodes[0]?.name.full||""),
+    released:m.startDate.year?ymd(m.startDate.year,m.startDate.month,m.startDate.day):"",
+    ended:m.endDate.year?ymd(m.endDate.year,m.endDate.month,m.endDate.day):"",
+    ongoing:m.status==="RELEASING"||m.status==="HIATUS",genres:gj(m.genres),
+    cover:m.coverImage.large,desc:strip(m.description)}));
+}
+async function srcMovie(q){
+  const d=await j(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&country=jp&media=movie&limit=6&lang=ja_jp`);
+  return d.results.map(m=>({title:m.trackName,type:"映画",creator:m.artistName||"",released:dt(m.releaseDate),
+    genres:dropG([m.primaryGenreName]),cover:art(m.artworkUrl100),desc:strip(m.longDescription||m.shortDescription)}));
+}
+async function srcTv(q){
+  const d=await j(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&country=jp&media=tvShow&entity=tvSeason&limit=5&lang=ja_jp`);
+  return d.results.map(m=>({title:m.collectionName,type:"ドラマ",creator:m.artistName||"",released:dt(m.releaseDate),
+    genres:dropG([m.primaryGenreName]),cover:art(m.artworkUrl100),desc:strip(m.longDescription||m.shortDescription)}));
+}
+
+async function srcEbook(q){
+  const d=await j(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&country=jp&media=ebook&limit=8&lang=ja_jp`);
+  return d.results.filter(m=>m.trackName).map(m=>({title:m.trackName,creator:m.artistName||"",
+    type:/コミック|マンガ|漫画/.test((m.genres||[]).join())?"漫画":"本",released:dt(m.releaseDate),
+    genres:dropG(m.genres),cover:art(m.artworkUrl100),desc:strip(m.description)}));
+}
+async function srcWiki(q){
+  const d=await j(`https://ja.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=6&prop=pageimages|extracts&exintro=1&explaintext=1&exchars=250&piprop=thumbnail&pithumbsize=300&format=json&origin=*`);
+  const guess=t=>/アニメ/.test(t)?"アニメ":/漫画|コミック/.test(t)?"漫画":/映画/.test(t)?"映画":/ドラマ/.test(t)?"ドラマ":/ゲーム/.test(t)?"ゲーム":/小説|書籍|著作/.test(t)?"本":"その他";
+  return Object.values(d.query?.pages||{}).sort((a,b)=>a.index-b.index).map(p=>{
+    const type=guess((p.extract||"").slice(0,80));
+    const m=(p.extract||"").match(/(\d{4})年(?:(\d{1,2})月(?:(\d{1,2})日)?)?/); // 概要文の最初の日付（要確認）
+    return {title:p.title.replace(/\s*[(（][^)）]*[)）]$/,""),creator:"",type,
+      released:m&&type!=="その他"?ymd(+m[1],+(m[2]||0),+(m[3]||0)):"",genres:[],cover:p.thumbnail?.source||"",desc:strip(p.extract)};
+  });
+}
+
+/* TMDB（キーはこのブラウザ内にだけ保存） */
+const getKey=()=>{try{return localStorage.getItem("tmdb-key")||""}catch(e){return ""}};
+const tmdb=(path,params={})=>{
+  const k=getKey(),bearer=k.startsWith("eyJ");
+  const u=new URL("https://api.themoviedb.org/3"+path);
+  u.search=new URLSearchParams({language:"ja-JP",...params,...(bearer?{}:{api_key:k})});
+  return j(u,bearer?{headers:{Authorization:"Bearer "+k}}:undefined);
+};
+async function srcTmdb(q){
+  if(!getKey())return [];
+  const d=await tmdb("/search/multi",{query:q});
+  return d.results.filter(m=>m.media_type==="movie"||m.media_type==="tv").slice(0,8).map(m=>({
+    title:m.title||m.name,creator:"",released:dt(m.release_date||m.first_air_date),genres:[],
+    type:m.media_type==="movie"?"映画":(m.genre_ids||[]).includes(16)?"アニメ":"ドラマ",
+    cover:m.poster_path?"https://image.tmdb.org/t/p/w300"+m.poster_path:"",desc:strip(m.overview),
+    _tmdb:{id:m.id,kind:m.media_type}}));
+}
+// 選択時に監督・ジャンル・放送期間などの詳細を取得
+async function tmdbDetail({id,kind}){
+  try{
+    if(kind==="movie"){
+      const m=await tmdb(`/movie/${id}`,{append_to_response:"credits"});
+      return {creator:m.credits.crew.filter(p=>p.job==="Director").map(p=>p.name).join("、"),
+        released:dt(m.release_date),genres:(m.genres||[]).map(g=>g.name)};
+    }
+    const t=await tmdb(`/tv/${id}`);
+    const going=t.status==="Returning Series";
+    return {creator:(t.created_by||[]).map(p=>p.name).join("、"),released:dt(t.first_air_date),
+      ended:going?"":dt(t.last_air_date),ongoing:going,genres:(t.genres||[]).map(g=>g.name)};
+  }catch(e){return {}}
+}
+
+let found=[];
+async function search(){
+  const q=$("sq").value.trim();if(!q)return;
+  $("res").innerHTML=`<div class="empty">検索中…</div>`;$("snote").textContent="";
+  const names=["Google Books","AniList","iTunes映画","iTunesドラマ","iTunes電子書籍","Wikipedia","TMDB"];
+  const rs=await Promise.allSettled([srcBooks(q),srcAni(q),srcMovie(q),srcTv(q),srcEbook(q),srcWiki(q),srcTmdb(q)]);
+  found=rs.flatMap(r=>r.status==="fulfilled"?r.value:[]).filter(x=>x.title);
+  const norm=s=>s.replace(/[\s　:：]/g,"").toLowerCase(),nq=norm(q),seen=new Set();
+  found=found.filter(x=>{const k=norm(x.title)+x.type;return !seen.has(k)&&seen.add(k)})
+    .map((x,k)=>({x,k,s:norm(x.title).includes(nq)||nq.includes(norm(x.title))?0:1}))
+    .sort((a,b)=>a.s-b.s||a.k-b.k).map(o=>o.x);
+  const failed=names.filter((_,k)=>rs[k].status==="rejected");
+  const notes=[];
+  if(failed.length)notes.push(`取得できなかった検索元: ${failed.join("、")}（時間をおいて再検索してください）`);
+  if(!getKey())notes.push("TMDBキーを設定すると、映画・ドラマの検索精度が上がります（画面下の「TMDBキー設定」）");
+  $("snote").textContent=notes.join(" ／ ");
+  $("res").innerHTML=found.length?found.map((x,k)=>`
+    <button class="r" data-k="${k}">
+      ${x.cover?`<img src="${esc(x.cover)}" alt="" referrerpolicy="no-referrer">`:`<div class="noimg"></div>`}
+      <span><b>${esc(x.title)}</b><span class="meta"><span class="chip">${x.type}</span>${esc(x.creator)}${span(x)?` ・ ${esc(span(x))}`:""}</span></span>
+    </button>`).join(""):`<div class="empty">見つかりませんでした。別のキーワードか、手動入力を試してください。</div>`;
+}
+$("add").onclick=()=>{$("sq").value="";$("res").innerHTML="";$("snote").textContent="";$("sdlg").showModal();$("sq").focus()};
+$("sgo").onclick=search;
+$("sq").onkeydown=e=>{if(e.key==="Enter"&&!e.isComposing)search()};
+$("res").onclick=async e=>{
+  const b=e.target.closest(".r");if(!b)return;
+  const it={...found[b.dataset.k]};
+  if(it._tmdb){
+    const d=await tmdbDetail(it._tmdb);
+    for(const key in d)if(d[key]!==""&&d[key]!=null&&!(Array.isArray(d[key])&&!d[key].length))it[key]=d[key];
+    delete it._tmdb;
+  }
+  open(null,it);
+};
+$("tmdbkey").onclick=$("tmdbkey2").onclick=()=>{
+  const v=prompt("TMDBのAPIキー（v3キー、またはAPI読み取りアクセストークン）を貼り付けてください。空欄で削除します。",getKey());
+  if(v===null)return;
+  try{v.trim()?localStorage.setItem("tmdb-key",v.trim()):localStorage.removeItem("tmdb-key")}catch(e){}
+  alert(v.trim()?"保存しました":"削除しました");
+};
+$("manual").onclick=()=>open(null,{title:$("sq").value.trim()});
+$("sclose").onclick=()=>$("sdlg").close();
+$("cancel").onclick=()=>{clearDraft();$("dlg").close()};
+
+/* 入力途中の内容も自動保存し、閉じてしまっても再開できる */
+const DRAFT="record-draft";
+function clearDraft(){try{localStorage.removeItem(DRAFT)}catch(e){}}
+form.addEventListener("input",()=>{try{localStorage.setItem(DRAFT,JSON.stringify({editId,v:Object.fromEntries(new FormData(form)),ongoing:form.ongoing.checked}))}catch(e){}});
+function restoreDraft(){
+  try{
+    const d=JSON.parse(localStorage.getItem(DRAFT)||"null");
+    if(!d||!(d.v.title||d.v.memo))return;
+    if(confirm(`入力途中の記録「${d.v.title||"（無題）"}」があります。続きから再開しますか？`))
+      open(items.some(x=>x.id===d.editId)?d.editId:null,{...d.v,rating:+d.v.rating||0,ongoing:d.ongoing});
+    else clearDraft();
+  }catch(e){}
+}
+form.onsubmit=()=>{
+  clearDraft();
+  const d=Object.fromEntries(new FormData(form));d.rating=+d.rating;
+  d.ongoing=form.ongoing.checked;
+  d.released=nd(d.released);d.ended=d.ongoing?"":nd(d.ended);
+  d.genres=[...new Set(d.genres.split(/[,、，]/).map(s=>s.trim()).filter(Boolean))].join("、");
+  if(editId)Object.assign(items.find(x=>x.id===editId),d);else items.push({id:crypto.randomUUID(),...d});
+  save();render();
+};
+$("tabs").onclick=e=>{const t=e.target.dataset.t;if(t){tab=t;render()}};
+$("list").onclick=e=>{
+  if(e.target.dataset.e)open(e.target.dataset.e);
+  if(e.target.dataset.d&&confirm("削除しますか？")){items=items.filter(x=>x.id!==e.target.dataset.d);save();render()}
+};
+$("q").oninput=render;$("sort").onchange=render;$("gf").onchange=render;
+
+$("exp").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:"application/json"}));
+  a.download=`hobby-record-${new Date().toISOString().slice(0,10)}.json`;a.click();
+  try{localStorage.setItem("last-export",String(Date.now()))}catch(e){}
+  updateStatus();
+};
+$("imp").onclick=()=>$("file").click();
+$("file").onchange=async e=>{ // 取り込みは「統合」：今ある記録は消さず、無いものだけ追加する
+  try{
+    const n=mergeIn(JSON.parse(await e.target.files[0].text()));
+    await save();render();alert(`${n}件を追加しました（今ある記録はそのまま残っています）`);
+  }catch(err){alert("読み込めませんでした")}
+  e.target.value="";
+};
+
+/* 自動保存ファイル（Chrome / Edge）：選んだJSONファイルへ変更のたびに書き込む */
+$("link").onclick=async()=>{
+  if(!window.showSaveFilePicker){alert("このブラウザは非対応です（Chrome / Edge で利用できます）");return}
+  try{
+    if(fh){if((await fh.requestPermission({mode:"readwrite"}))!=="granted")return}
+    else{
+      fh=await showSaveFilePicker({suggestedName:"hobby-record-data.json",types:[{description:"JSON",accept:{"application/json":[".json"]}}]});
+      await idbPut("fh",fh);
+      try{const t=await(await fh.getFile()).text();if(t.trim())mergeIn(JSON.parse(t))}catch(e){} // 既存の中身は失わず統合
+    }
+    await save();render();
+  }catch(e){} // キャンセルなど
+};
+
+async function init(){
+  try{navigator.storage?.persist?.()}catch(e){} // ブラウザに「勝手に消さない」よう要求
+  try{const p=await idbGet("items");if(p&&Array.isArray(p.items)&&(p.savedAt||0)>lsSaved){items=p.items;normalize()}}catch(e){}
+  try{fh=(await idbGet("fh"))||null}catch(e){}
+  ready=true;
+  render();
+  if(items.length||fh)await save();else updateStatus(); // 起動時に全ての保存先をそろえる
+  restoreDraft();
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden)save()});
+init();
+</script>
+</body>
+</html>
